@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 # ======================================================
 
 DHAN_CLIENT_ID = "1100480354"
-DHAN_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJkaGFuIiwicGFydG5lcklkIjoiIiwiZXhwIjoxNzY1ODY4MjUwLCJhcHBfaWQiOiJjOTNkM2UwOSIsImlhdCI6MTc2NTc4MTg1MCwidG9rZW5Db25zdW1lclR5cGUiOiJBUFAiLCJ3ZWJob29rVXJsIjoiIiwiZGhhbkNsaWVudElkIjoiMTEwMDQ4MDM1NCJ9.PN4ersyCLxbgtjtsaoBiyOvE9Oj-bxZ5F06xlgMuOdIcmRzFoUjZYAcS7C_FLf4Ggb5JTeUXkcsWC27ZY58yBA""
+DHAN_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJkaGFuIiwicGFydG5lcklkIjoiIiwiZXhwIjoxNzY1ODY4MjUwLCJhcHBfaWQiOiJjOTNkM2UwOSIsImlhdCI6MTc2NTc4MTg1MCwidG9rZW5Db25zdW1lclR5cGUiOiJBUFAiLCJ3ZWJob29rVXJsIjoiIiwiZGhhbkNsaWVudElkIjoiMTEwMDQ4MDM1NCJ9.PN4ersyCLxbgtjtsaoBiyOvE9Oj-bxZ5F06xlgMuOdIcmRzFoUjZYAcS7C_FLf4Ggb5JTeUXkcsWC27ZY58yBA"
 
 BASE_URL = "https://api.dhan.co"
 
