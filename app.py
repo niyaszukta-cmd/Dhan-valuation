@@ -7,7 +7,6 @@ import plotly.graph_objects as go
 # DHAN CONFIG
 # ======================================================
 
-DHAN_CLIENT_ID = "1100480354"
 DHAN_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJkaGFuIiwicGFydG5lcklkIjoiIiwiZXhwIjoxNzY1ODY4MjUwLCJhcHBfaWQiOiJjOTNkM2UwOSIsImlhdCI6MTc2NTc4MTg1MCwidG9rZW5Db25zdW1lclR5cGUiOiJBUFAiLCJ3ZWJob29rVXJsIjoiIiwiZGhhbkNsaWVudElkIjoiMTEwMDQ4MDM1NCJ9.PN4ersyCLxbgtjtsaoBiyOvE9Oj-bxZ5F06xlgMuOdIcmRzFoUjZYAcS7C_FLf4Ggb5JTeUXkcsWC27ZY58yBA"
 
 BASE_URL = "https://api.dhan.co"
@@ -18,7 +17,7 @@ HEADERS = {
 }
 
 # ======================================================
-# STOCK DATABASE (NSE SECURITY IDs)
+# STOCK DATABASE (NSE SECURITY IDS)
 # ======================================================
 
 STOCK_DB = {
@@ -35,29 +34,24 @@ STOCK_DB = {
 }
 
 # ======================================================
-# DHAN LTP FUNCTION (FIXED)
+# DHAN LTP (OFFICIAL & WORKING)
 # ======================================================
 
 def dhan_ltp(security_id: str) -> float:
-    url = f"{BASE_URL}/marketdata/ltp"
+    url = f"{BASE_URL}/v2/marketdata/ltp"
 
     payload = {
-        "exchangeSegment": "NSE_EQ",
-        "securityId": security_id
+        "securities": {
+            "NSE_EQ": [security_id]
+        }
     }
 
-    response = requests.post(
-        url,
-        headers=HEADERS,
-        json=payload,
-        timeout=10
+    r = requests.post(url, headers=HEADERS, json=payload, timeout=10)
+    r.raise_for_status()
+
+    return float(
+        r.json()["data"]["NSE_EQ"][security_id]["ltp"]
     )
-
-    if response.status_code != 200:
-        raise Exception(response.text)
-
-    data = response.json()
-    return float(data["data"]["ltp"])
 
 # ======================================================
 # STREAMLIT UI
@@ -100,7 +94,7 @@ except Exception as e:
     st.stop()
 
 # ======================================================
-# VALUATION LOGIC
+# VALUATION
 # ======================================================
 
 fair_value_pe = eps * industry_pe
