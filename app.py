@@ -1,158 +1,194 @@
 import streamlit as st
 import requests
 import pandas as pd
-import plotly.graph_objects as go
+import numpy as np
 
 # ======================================================
-# DHAN CONFIG
-# ======================================================
-
-DHAN_ACCESS_TOKEN = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzUxMiJ9.eyJpc3MiOiJkaGFuIiwicGFydG5lcklkIjoiIiwiZXhwIjoxNzY1ODY4MjUwLCJhcHBfaWQiOiJjOTNkM2UwOSIsImlhdCI6MTc2NTc4MTg1MCwidG9rZW5Db25zdW1lclR5cGUiOiJBUFAiLCJ3ZWJob29rVXJsIjoiIiwiZGhhbkNsaWVudElkIjoiMTEwMDQ4MDM1NCJ9.PN4ersyCLxbgtjtsaoBiyOvE9Oj-bxZ5F06xlgMuOdIcmRzFoUjZYAcS7C_FLf4Ggb5JTeUXkcsWC27ZY58yBA"
-
-BASE_URL = "https://api.dhan.co"
-
-HEADERS = {
-    "access-token": DHAN_ACCESS_TOKEN,
-    "Content-Type": "application/json"
-}
-
-# ======================================================
-# STOCK DATABASE (NSE SECURITY IDS)
-# ======================================================
-
-STOCK_DB = {
-    "RELIANCE": "2885",
-    "TCS": "11536",
-    "INFY": "1594",
-    "HDFCBANK": "1333",
-    "ICICIBANK": "4963",
-    "SBIN": "3045",
-    "ITC": "1660",
-    "LT": "11483",
-    "AXISBANK": "5900",
-    "MARUTI": "10999"
-}
-
-# ======================================================
-# DHAN LTP (OFFICIAL & WORKING)
-# ======================================================
-
-def dhan_ltp(security_id: str) -> float:
-    url = f"{BASE_URL}/v2/marketdata/ltp"
-
-    payload = {
-        "securities": {
-            "NSE_EQ": [security_id]
-        }
-    }
-
-    r = requests.post(url, headers=HEADERS, json=payload, timeout=10)
-    r.raise_for_status()
-
-    return float(
-        r.json()["data"]["NSE_EQ"][security_id]["ltp"]
-    )
-
-# ======================================================
-# STREAMLIT UI
+# CONFIG
 # ======================================================
 
 st.set_page_config(
-    page_title="NYZTrade – Stock Valuation Dashboard",
+    page_title="Stock Valuation Dashboard (FMP)",
     layout="wide"
 )
 
-st.title("📊 NYZTrade – Stock Valuation Dashboard")
-st.caption("Live price from Dhan API • Fundamental valuation")
+FMP_API_KEY = "DfUOLHcLmUGAtmeKu4UFVnvQhk3AWMMp"
+BASE_URL = "https://financialmodelingprep.com/api/v3"
 
 # ======================================================
-# SIDEBAR
+# API FUNCTIONS
 # ======================================================
 
-st.sidebar.header("⚙️ Controls")
+def get_profile(symbol):
+    url = f"{BASE_URL}/profile/{symbol}?apikey={FMP_API_KEY}"
+    r = requests.get(url)
+    data = r.json()
+    return data[0] if data else None
 
-stock = st.sidebar.selectbox("Select Stock", list(STOCK_DB.keys()))
-security_id = STOCK_DB[stock]
 
-st.sidebar.markdown("---")
-st.sidebar.subheader("📥 Fundamental Inputs")
+def get_income_statement(symbol):
+    url = f"{BASE_URL}/income-statement/{symbol}?limit=5&apikey={FMP_API_KEY}"
+    r = requests.get(url)
+    return r.json()
 
-eps = st.sidebar.number_input("EPS (TTM)", value=33.0, step=1.0)
-growth_rate = st.sidebar.number_input("Expected Growth (%)", value=10.5, step=0.5)
-discount_rate = st.sidebar.number_input("Discount Rate (%)", value=8.0, step=0.5)
-industry_pe = st.sidebar.number_input("Industry PE", value=16.0, step=1.0)
 
-# ======================================================
-# FETCH LIVE PRICE
-# ======================================================
+def get_cashflow(symbol):
+    url = f"{BASE_URL}/cash-flow-statement/{symbol}?limit=5&apikey={FMP_API_KEY}"
+    r = requests.get(url)
+    return r.json()
 
-try:
-    price = dhan_ltp(security_id)
-except Exception as e:
-    st.error("❌ Failed to fetch live price from Dhan API")
-    st.code(e)
-    st.stop()
 
-# ======================================================
-# VALUATION
-# ======================================================
+def get_ratios(symbol):
+    url = f"{BASE_URL}/ratios-ttm/{symbol}?apikey={FMP_API_KEY}"
+    r = requests.get(url)
+    data = r.json()
+    return data[0] if data else None
 
-fair_value_pe = eps * industry_pe
-mos_pe = (fair_value_pe - price) / price * 100
-
-cashflows = []
-current_eps = eps
-
-for year in range(1, 6):
-    current_eps *= (1 + growth_rate / 100)
-    discounted = current_eps / ((1 + discount_rate / 100) ** year)
-    cashflows.append(discounted)
-
-dcf_value = sum(cashflows)
-mos_dcf = (dcf_value - price) / price * 100
 
 # ======================================================
-# METRICS
+# UI
 # ======================================================
 
-st.subheader(f"📌 {stock} – Valuation Snapshot")
+st.title("📊 Stock Valuation Dashboard")
+st.caption("Powered by Financial Modeling Prep (FMP) API")
 
-c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("Live Price", f"₹ {price:,.2f}")
-c2.metric("Fair Value (PE)", f"₹ {fair_value_pe:,.2f}")
-c3.metric("MOS (PE)", f"{mos_pe:.2f}%")
-c4.metric("DCF Value", f"₹ {dcf_value:,.2f}")
-c5.metric("MOS (DCF)", f"{mos_dcf:.2f}%")
+st.info("Use `.NS` for Indian stocks (e.g., RELIANCE.NS, TCS.NS)")
 
-# ======================================================
-# VERDICT
-# ======================================================
+symbol = st.text_input(
+    "Enter Stock Symbol",
+    value="RELIANCE.NS"
+).upper()
 
-st.markdown("---")
-if mos_pe > 30 and mos_dcf > 30:
-    st.success("🟢 Strongly Undervalued")
-elif mos_pe > 10 or mos_dcf > 10:
-    st.info("🟡 Moderately Undervalued")
-elif mos_pe < -10 and mos_dcf < -10:
-    st.error("🔴 Overvalued")
-else:
-    st.warning("⚖️ Fairly Valued")
+# User assumptions
+st.markdown("### 🔧 Valuation Assumptions")
 
-# ======================================================
-# CHART
-# ======================================================
+col1, col2, col3 = st.columns(3)
 
-fig = go.Figure()
-fig.add_bar(name="Live Price", x=["Price"], y=[price])
-fig.add_bar(name="PE Fair Value", x=["PE"], y=[fair_value_pe])
-fig.add_bar(name="DCF Value", x=["DCF"], y=[dcf_value])
+with col1:
+    growth_rate = st.number_input(
+        "Expected Growth Rate (%)",
+        value=10.0
+    )
 
-fig.update_layout(barmode="group", template="plotly_white")
-st.plotly_chart(fig, use_container_width=True)
+with col2:
+    discount_rate = st.number_input(
+        "Discount Rate (%)",
+        value=12.0
+    )
+
+with col3:
+    industry_pe = st.number_input(
+        "Assumed Industry PE",
+        value=20.0
+    )
 
 # ======================================================
-# FOOTER
+# FETCH DATA
 # ======================================================
 
-st.markdown("---")
-st.caption("⚠️ Educational purpose only. Not investment advice.")
+if st.button("🚀 Run Valuation", use_container_width=True):
+
+    with st.spinner("Fetching data..."):
+
+        profile = get_profile(symbol)
+        income = get_income_statement(symbol)
+        cashflow = get_cashflow(symbol)
+        ratios = get_ratios(symbol)
+
+    if not profile:
+        st.error("Invalid symbol or API limit exceeded")
+        st.stop()
+
+    # ==================================================
+    # BASIC DATA
+    # ==================================================
+
+    price = float(profile["price"])
+    market_cap = profile.get("mktCap", 0)
+    company = profile["companyName"]
+    sector = profile.get("sector", "N/A")
+
+    eps = float(ratios["epsTTM"]) if ratios and ratios.get("epsTTM") else 0
+    pe = float(ratios["peRatioTTM"]) if ratios and ratios.get("peRatioTTM") else 0
+    roe = float(ratios["roeTTM"]) * 100 if ratios and ratios.get("roeTTM") else 0
+
+    # ==================================================
+    # PE VALUATION
+    # ==================================================
+
+    fair_value_pe = eps * industry_pe
+    mos_pe = ((fair_value_pe - price) / price) * 100 if price > 0 else 0
+
+    # ==================================================
+    # DCF VALUATION (EPS BASED)
+    # ==================================================
+
+    projected_eps = eps
+    discounted_cashflows = []
+
+    for year in range(1, 6):
+        projected_eps *= (1 + growth_rate / 100)
+        discounted = projected_eps / ((1 + discount_rate / 100) ** year)
+        discounted_cashflows.append(discounted)
+
+    dcf_value = sum(discounted_cashflows)
+    mos_dcf = ((dcf_value - price) / price) * 100 if price > 0 else 0
+
+    # ==================================================
+    # DISPLAY METRICS
+    # ==================================================
+
+    st.markdown("---")
+    st.subheader(f"🏢 {company}")
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Live Price", f"₹ {price:,.2f}")
+    c2.metric("EPS (TTM)", f"{eps:.2f}")
+    c3.metric("PE (TTM)", f"{pe:.2f}")
+    c4.metric("ROE", f"{roe:.2f}%")
+
+    st.markdown("---")
+    st.subheader("📈 Valuation Results")
+
+    v1, v2, v3, v4 = st.columns(4)
+    v1.metric("PE Fair Value", f"₹ {fair_value_pe:,.2f}")
+    v2.metric("DCF Value (5Y)", f"₹ {dcf_value:,.2f}")
+    v3.metric("MOS (PE)", f"{mos_pe:.2f}%")
+    v4.metric("MOS (DCF)", f"{mos_dcf:.2f}%")
+
+    # ==================================================
+    # VALUATION SIGNAL
+    # ==================================================
+
+    st.markdown("---")
+
+    avg_mos = (mos_pe + mos_dcf) / 2
+
+    if avg_mos > 30:
+        st.success("🟢 STRONGLY UNDERVALUED")
+    elif avg_mos > 10:
+        st.info("🟡 MODERATELY UNDERVALUED")
+    elif avg_mos > -10:
+        st.warning("⚖️ FAIRLY VALUED")
+    else:
+        st.error("🔴 OVERVALUED")
+
+    # ==================================================
+    # FINANCIAL SUMMARY TABLE
+    # ==================================================
+
+    if income and isinstance(income, list):
+        st.markdown("---")
+        st.subheader("📋 Financial Summary (Last 5 Years)")
+
+        df_income = pd.DataFrame(income)[
+            ["calendarYear", "revenue", "netIncome"]
+        ].rename(columns={
+            "calendarYear": "Year",
+            "revenue": "Revenue",
+            "netIncome": "Net Income"
+        })
+
+        st.dataframe(df_income, use_container_width=True)
+
+    st.caption("Data Source: Financial Modeling Prep (FMP)")
